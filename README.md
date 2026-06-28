@@ -329,5 +329,5 @@ MIT — see [LICENSE](LICENSE)
 
 **Marawen Charni** — Solutions Engineer at Snowflake, based in the Middle East. Building things that make data teams more productive.
 
-- Medium: [@marawen](https://medium.com/@marawen)
-- LinkedIn: [/in/marawen](https://linkedin.com/in/marawen)
+- Medium: [@marawen.cherni](https://medium.com/@marawen.cherni)
+- LinkedIn: [/in/mcharni](https://www.linkedin.com/in/mcharni)

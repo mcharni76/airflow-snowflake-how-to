@@ -190,7 +190,7 @@ Over the next 6 articles, we'll build a complete pipeline step by step:
 
 Each article has a corresponding git tag. Clone the repo, checkout the tag, and you have the exact state of the code for that article.
 
-**Repository:** [github.com/marawen/airflow-snowflake-how-to](https://github.com/marawen/airflow-snowflake-how-to)
+**Repository:** [github.com/mcharni76/airflow-snowflake-how-to](https://github.com/mcharni76/airflow-snowflake-how-to)
 
 ---
 
@@ -210,7 +210,9 @@ Let Airflow do what it's good at: orchestrating. Let Snowflake do what it's good
 
 ---
 
-*About the Author: Marawen Charni is a Solutions Engineer at Snowflake, based in the Middle East. He's spent the last year reviewing Airflow implementations and gently suggesting that maybe, just maybe, pandas doesn't belong inside a DAG.*
+*About the Author: [Marawen Charni](https://www.linkedin.com/in/mcharni) is a Solutions Engineer at Snowflake, based in the Middle East. He's spent the last year reviewing Airflow implementations and gently suggesting that maybe, just maybe, pandas doesn't belong inside a DAG.*
+
+*Follow on Medium: [@marawen.cherni](https://medium.com/@marawen.cherni)*
 
 ---
 
