@@ -48,17 +48,7 @@ The fix: **let Snowflake do what Snowflake was built for.**
 
 ## How It Works (End-to-End Flow)
 
-```
-1. Airflow checks watermark        → "What's the last timestamp I processed?"
-2. Airflow calls vendor API         → Paginated extraction (incremental)
-3. Airflow writes JSON to file      → Local temp file
-4. Airflow PUTs file to Stage       → Snowflake Internal Stage (encrypted at rest)
-5. Directory Stream detects file    → Automatic metadata capture
-6. Triggered Task fires             → MERGE INTO bronze (idempotent, safe to replay)
-7. dbt runs Silver models           → QUALIFY ROW_NUMBER() deduplication
-8. dbt runs Gold models             → Business aggregations + cross-source joins
-9. Airflow updates watermark        → Stored in Snowflake table (single source of truth)
-```
+![End-to-End Flow](docs/diagrams/05-end-to-end-flow.png)
 
 **Airflow touches steps 1-4 and 9.** Snowflake handles steps 5-8 autonomously.
 
@@ -82,7 +72,7 @@ Each article builds on the previous one. Git tags mark the state of the repo at 
 
 ## Local Development Stack
 
-![Local Dev Stack](docs/diagrams/05-local-dev-stack.png)
+![Local Dev Stack](docs/diagrams/07-local-dev-stack.png)
 
 ## Quick Start (Local Development)
 
@@ -179,7 +169,7 @@ For detailed ADRs, see [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Deployment Options
 
-![Deployment Options](docs/diagrams/06-deployment-options.png)
+![Deployment Options](docs/diagrams/08-deployment-options.png)
 
 ### Option 1: Docker Compose (Local Development)
 
