@@ -20,36 +20,47 @@ This repo accompanies the Medium article series: **"Airflow + Snowflake: The Rig
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  Docker Compose (Your Machine)                                          │
-│                                                                         │
-│  ┌──────────────┐     ┌──────────────────────────────────────────────┐ │
-│  │  Mock API    │     │  Airflow (control plane only)                │ │
-│  │  :8099       │────▶│  webserver :8080 │ scheduler │ triggerer     │ │
-│  │  /docs (UI)  │     │                                              │ │
-│  └──────────────┘     └─────────────────────┬────────────────────────┘ │
-│                                             │                           │
-│                                             │ PUT file (sync)           │
-└─────────────────────────────────────────────┼───────────────────────────┘
-                                              │
-                                              ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  Snowflake                                                              │
-│                                                                         │
-│  @STAGE ──▶ Directory Stream ──▶ Triggered Task ──▶ BRONZE (MERGE)     │
-│                                                        │                │
-│                                                        ▼                │
-│                                               dbt (SILVER → GOLD)       │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+![Reference Architecture](docs/diagrams/04-reference-architecture.png)
 
 ### The Core Principle
 
+![Control Plane vs Runtime](docs/diagrams/01-control-plane.png)
+
 | Layer | Owner | Does | Does NOT |
 |-------|-------|------|----------|
-| Airflow | You (Docker) | Call APIs, handle pagination, PUT files, observe | Transform, join, deduplicate, aggregate |
-| Snowflake | Snowflake | Stage → Stream → Task → Bronze → Silver → Gold | Call external APIs, manage schedules |
+| **Airflow** | You (Docker/SPCS/MWAA) | Call APIs, handle pagination, PUT files, observe | Transform, join, deduplicate, aggregate |
+| **Snowflake** | Snowflake | Stage → Stream → Task → Bronze → Silver → Gold | Call external APIs, manage schedules |
+
+### Why This Matters
+
+![The Anti-Pattern](docs/diagrams/02-anti-pattern.png)
+
+Most teams treat Airflow as both orchestrator AND executor. This leads to:
+- Memory-killed workers at 3 AM
+- 2-CPU containers trying to transform millions of rows
+- Horizontal scaling of Airflow just to handle data volume
+
+The fix: **let Snowflake do what Snowflake was built for.**
+
+![The Orchestra Metaphor](docs/diagrams/03-conductor-orchestra.png)
+
+---
+
+## How It Works (End-to-End Flow)
+
+```
+1. Airflow checks watermark        → "What's the last timestamp I processed?"
+2. Airflow calls vendor API         → Paginated extraction (incremental)
+3. Airflow writes JSON to file      → Local temp file
+4. Airflow PUTs file to Stage       → Snowflake Internal Stage (encrypted at rest)
+5. Directory Stream detects file    → Automatic metadata capture
+6. Triggered Task fires             → MERGE INTO bronze (idempotent, safe to replay)
+7. dbt runs Silver models           → QUALIFY ROW_NUMBER() deduplication
+8. dbt runs Gold models             → Business aggregations + cross-source joins
+9. Airflow updates watermark        → Stored in Snowflake table (single source of truth)
+```
+
+**Airflow touches steps 1-4 and 9.** Snowflake handles steps 5-8 autonomously.
 
 ---
 
@@ -57,30 +68,35 @@ This repo accompanies the Medium article series: **"Airflow + Snowflake: The Rig
 
 | # | Article | What You Learn | Code Tag |
 |---|---------|---------------|----------|
-| 1 | [Stop Using Airflow Wrong](#) | Architecture philosophy | `repo-live` |
-| 2 | [Incremental CDC Pipeline](#) | Watermarks + triggered tasks | `v0.1` |
-| 3 | [dbt: Bronze to Gold](#) | Incremental models + QUALIFY dedup | `v0.2` |
-| 4 | [Multi-Source TaskGroups](#) | Parallel ingestion from 3 APIs | `v0.3` |
-| 5 | [10 Gotchas](#) | War stories that save you days | `v0.4` |
-| B1 | [Airflow on SPCS](#) | Enterprise self-hosted in Snowflake | `v1.0-spcs` |
-| B2 | [Migrating to MWAA](#) | AWS managed Airflow + Snowpipe | `v1.0-mwaa` |
+| 1 | [Stop Using Airflow Wrong](articles/01-stop-using-airflow-wrong.md) | Architecture philosophy | `repo-live` |
+| 2 | Incremental CDC Pipeline | Watermarks + triggered tasks | `v0.1` |
+| 3 | dbt: Bronze to Gold | Incremental models + QUALIFY dedup | `v0.2` |
+| 4 | Multi-Source TaskGroups | Parallel ingestion from 3 APIs | `v0.3` |
+| 5 | 10 Gotchas | War stories that save you days | `v0.4` |
+| B1 | Airflow on SPCS | Enterprise self-hosted in Snowflake | `v1.0-spcs` |
+| B2 | Migrating to MWAA | AWS managed Airflow + Snowpipe | `v1.0-mwaa` |
 
 Each article builds on the previous one. Git tags mark the state of the repo at each article's publication.
 
 ---
 
-## Quick Start
+## Local Development Stack
+
+![Local Dev Stack](docs/diagrams/05-local-dev-stack.png)
+
+## Quick Start (Local Development)
 
 ### Prerequisites
 
-- Docker Desktop
+- Docker Desktop (4GB+ RAM allocated)
 - A Snowflake account (trial works fine)
-- Private key (.p8) configured for your Snowflake user
+- Private key (`.p8`) configured for your Snowflake user
+- Python 3.10+ (for running tests locally)
 
 ### 1. Clone and Configure
 
 ```bash
-git clone https://github.com/<your-username>/airflow-snowflake-how-to.git
+git clone https://github.com/mcharni76/airflow-snowflake-how-to.git
 cd airflow-snowflake-how-to
 cp .env.example .env
 # Edit .env with your Snowflake account details
@@ -103,9 +119,17 @@ snowflake/05_create_triggered_task.sql
 docker compose up --build -d
 ```
 
+This brings up:
+- **Mock API** at http://localhost:8099/docs (FastAPI with Swagger UI)
+- **Airflow Webserver** at http://localhost:8080 (admin/admin)
+- **PostgreSQL** (Airflow metadata — internal, no port exposed)
+
 ### 4. Trigger the Pipeline
 
-Open http://localhost:8080 (admin/admin), find the DAG, unpause it, and trigger.
+1. Open http://localhost:8080
+2. Find `single_source_pipeline` DAG
+3. Unpause → Trigger
+4. Watch it extract from Mock API → PUT to Snowflake → observe task completion
 
 ---
 
@@ -125,9 +149,14 @@ airflow-snowflake-how-to/
 │   └── models/{silver,gold}/
 ├── spcs/                        # Bonus: Enterprise SPCS deployment
 ├── mwaa/                        # Bonus: AWS MWAA migration guide
-├── tests/                       # Unit + E2E tests
+├── tests/                       # Unit + integration tests
 ├── articles/                    # Medium article sources (markdown)
-└── docs/                        # Architecture decisions + diagrams
+└── docs/
+    ├── DECISIONS.md             # Architecture Decision Records (ADRs)
+    ├── diagrams/                # Excalidraw source + PNG exports
+    ├── PRODUCT_VISION.md
+    ├── ROADMAP.md
+    └── REQUIREMENTS.md
 ```
 
 ---
@@ -137,14 +166,147 @@ airflow-snowflake-how-to/
 | Decision | Rationale |
 |----------|-----------|
 | Internal stage (not S3) | Local dev — no cloud bucket needed |
-| Key-pair auth (not password) | More secure, no password in env files |
+| Key-pair auth (not password) | More secure, no password rotation headaches |
 | Triggered task (not scheduled) | Event-driven: runs only when files arrive |
 | Reschedule sensor (not poke) | Frees Airflow worker while waiting |
 | MERGE at Bronze | Idempotent: safe to replay any batch |
 | QUALIFY at Silver | Deduplicate without separate staging table |
-| Watermark in Snowflake table | Single source of truth (not XCom) |
+| Watermark in Snowflake table | Single source of truth (not XCom, not Airflow DB) |
 
 For detailed ADRs, see [docs/DECISIONS.md](docs/DECISIONS.md).
+
+---
+
+## Deployment Options
+
+![Deployment Options](docs/diagrams/06-deployment-options.png)
+
+### Option 1: Docker Compose (Local Development)
+
+> **Covered in:** Articles 1–5
+
+Run the entire stack on your laptop. Perfect for learning, prototyping, and demos.
+
+| Pros | Cons |
+|------|------|
+| Zero cloud cost | Not production-ready |
+| Works offline (except Snowflake calls) | Single machine — no HA |
+| Full control over all components | Manual scaling |
+| Fast iteration (hot-reload DAGs) | No persistent storage without volumes |
+| Identical environment for all devs | Resource-limited by your machine |
+
+---
+
+### Option 2: Snowpark Container Services (SPCS)
+
+> **Covered in:** Bonus Article 1
+
+Run Airflow **inside Snowflake** as a containerized service. Zero egress, single bill, native RBAC.
+
+| Pros | Cons |
+|------|------|
+| Zero data egress (Airflow → Snowflake is internal) | Snowflake-specific (vendor lock-in) |
+| Single bill (compute pool credits) | Newer service — smaller community |
+| Inherits Snowflake RBAC (no separate IAM) | Cold start on compute pool resume |
+| OAuth token auto-injection (no key files) | Limited to Snowflake networking model |
+| Block storage for DAG/log persistence | Requires Enterprise+ edition |
+| Network rules = zero-trust egress | Debugging requires `SYSTEM$GET_SERVICE_LOGS` |
+| Image repository (air-gapped, no Docker Hub) | No native Airflow UI (custom ingress needed) |
+| Auto-scaling via compute pool policies | GPU not needed but pool sizing matters |
+
+**Best for:** Enterprises already deep in Snowflake, wanting single-pane governance and zero-egress architecture.
+
+---
+
+### Option 3: Amazon MWAA (Managed Workflows for Apache Airflow)
+
+> **Covered in:** Bonus Article 2
+
+AWS fully manages the Airflow infrastructure. You just deploy DAGs to S3.
+
+| Pros | Cons |
+|------|------|
+| Fully managed (no infra to maintain) | AWS-only (no multi-cloud) |
+| Auto-scaling workers | Expensive at scale ($0.49/hr base + workers) |
+| Native S3 integration for DAGs | Limited Airflow version choices |
+| IAM-based access control | Plugin/provider installation can be tricky |
+| CloudWatch logging built-in | Cold start on worker scaling (2-5 min) |
+| VPC-native (private networking) | No SSH access to workers |
+| Automatic patching and updates | Environment updates can take 20+ min |
+
+**Best for:** AWS-native shops that want managed Airflow without ops burden and already use S3/IAM.
+
+---
+
+### Option 4: Astronomer (Astro)
+
+> **Not covered in this series** (commercial product)
+
+Premium managed Airflow platform with advanced features, dedicated support, and multi-cloud.
+
+| Pros | Cons |
+|------|------|
+| Best-in-class managed Airflow experience | Commercial license ($$) |
+| Multi-cloud (AWS, GCP, Azure) | Vendor dependency |
+| Advanced observability + alerting | Overkill for small teams |
+| DAG versioning + CI/CD built-in | Learning curve for Astro-specific features |
+| Dedicated support + SLAs | Pricing not transparent |
+| Fastest Airflow version adoption | — |
+
+**Best for:** Teams that need premium support, multi-cloud, and advanced governance without managing infrastructure.
+
+---
+
+### Option 5: Google Cloud Composer
+
+> **Not covered in this series** (GCP-specific)
+
+GCP's managed Airflow service, built on Google Kubernetes Engine.
+
+| Pros | Cons |
+|------|------|
+| Fully managed on GKE | GCP-only |
+| Native integration with BigQuery, GCS, Dataflow | Expensive (GKE cluster always running) |
+| IAM + Workload Identity | Slower Airflow version updates |
+| Composer 2 = better scaling | Environment creation takes 20-30 min |
+| Private IP environments available | Complex networking (VPC, firewall rules) |
+
+**Best for:** GCP-native organizations already invested in Google Cloud ecosystem.
+
+---
+
+### Option 6: Self-Hosted Kubernetes
+
+> **Not covered in this series** (ops-heavy)
+
+Run Airflow on your own K8s cluster using the official Helm chart.
+
+| Pros | Cons |
+|------|------|
+| Full control over everything | You own all the ops (upgrades, scaling, monitoring) |
+| Any cloud or on-prem | Requires K8s expertise |
+| KubernetesExecutor for dynamic scaling | Complex setup (Helm + secrets + networking) |
+| Cost-efficient at scale | No managed support |
+| Custom images + plugins freely | Security hardening is your responsibility |
+| Air-gapped environments possible | Day-2 operations (logging, metrics, alerting) |
+
+**Best for:** Platform teams with strong K8s expertise who need maximum flexibility or have compliance requirements preventing managed services.
+
+---
+
+### Deployment Comparison Matrix
+
+| Criteria | Docker Compose | SPCS | MWAA | Astronomer | Cloud Composer | Self-Hosted K8s |
+|----------|:-:|:-:|:-:|:-:|:-:|:-:|
+| Setup complexity | Low | Medium | Medium | Low | Medium | High |
+| Operational burden | None (dev) | Low | Low | None | Low | High |
+| Cost (small) | Free | $ | $$ | $$$ | $$ | $ |
+| Cost (large) | N/A | $$ | $$$ | $$$$ | $$$ | $$ |
+| Snowflake integration | Good | Excellent | Good | Good | Good | Good |
+| Multi-cloud | N/A | No | No | Yes | No | Yes |
+| Auto-scaling | No | Yes | Yes | Yes | Yes | Yes |
+| Data egress | Outbound | Zero | Outbound | Outbound | Outbound | Varies |
+| Enterprise governance | No | Excellent | Good | Good | Good | Manual |
 
 ---
 
@@ -154,18 +316,6 @@ For detailed ADRs, see [docs/DECISIONS.md](docs/DECISIONS.md).
 pip install -r tests/requirements-test.txt
 pytest tests/ -v
 ```
-
----
-
-## Deployment Options (Covered in Bonus Articles)
-
-| Option | Article | Best For |
-|--------|---------|----------|
-| **Docker Compose** | Articles 1-5 | Local dev, learning, demos |
-| **SPCS (Snowflake)** | Bonus 1 | Enterprise: zero-egress, single bill, same RBAC |
-| **Amazon MWAA** | Bonus 2 | AWS shops wanting fully managed |
-| **Astronomer** | — | Teams wanting premium managed Airflow |
-| **GCP Cloud Composer** | — | GCP-native shops |
 
 ---
 

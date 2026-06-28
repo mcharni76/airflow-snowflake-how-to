@@ -2,7 +2,7 @@
 
 *Your Airflow DAGs shouldn't be doing what you think they should be doing.*
 
-![Hero Image](../docs/diagrams/Fig01_control_plane.png)
+![Control Plane vs Runtime](../docs/diagrams/01-control-plane.png)
 
 **Reading Time:** 8 minutes
 **Difficulty:** Intermediate
@@ -43,7 +43,7 @@ Here's the problem: **every line in that `transform` function is work that Snowf
 
 Type casting? Snowflake does it at read time. Deduplication? `QUALIFY ROW_NUMBER()` is a single-pass operation on columnar storage. Date parsing? Built-in. And it does all of this on dedicated compute, not on the same 2-CPU container that's also running your scheduler.
 
-![The Anti-Pattern](../docs/diagrams/Fig02_antipattern.png)
+![The Anti-Pattern](../docs/diagrams/02-anti-pattern.png)
 
 ---
 
@@ -66,7 +66,7 @@ The fix isn't complicated. It's a mindset shift.
 
 Think of it like a conductor and an orchestra. The conductor doesn't play the violin. The conductor tells the violinist *when* to play, *how fast*, and *when to stop*. If your conductor is also playing three instruments, something has gone wrong.
 
-![Control Plane vs Runtime](../docs/diagrams/Fig03_conductor.png)
+![The Orchestra Metaphor](../docs/diagrams/03-conductor-orchestra.png)
 
 ---
 
@@ -183,7 +183,7 @@ Let Airflow do what it's good at: orchestrating. Let Snowflake do what it's good
 
 **"The best Airflow DAG is one where every task finishes in under 10 seconds."**
 
-![The Right Way](../docs/diagrams/Fig04_right_way.png)
+![Reference Architecture](../docs/diagrams/04-reference-architecture.png)
 
 ---
 
