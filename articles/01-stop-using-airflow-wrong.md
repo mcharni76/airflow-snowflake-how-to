@@ -192,6 +192,8 @@ Each article has a corresponding git tag. Clone the repo, checkout the tag, and 
 
 **Repository:** [github.com/mcharni76/airflow-snowflake-how-to](https://github.com/mcharni76/airflow-snowflake-how-to)
 
+**Repository:** [github.com/mcharni76/airflow-snowflake-how-to](https://github.com/mcharni76/airflow-snowflake-how-to)
+
 ---
 
 ## The Bottom Line
