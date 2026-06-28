@@ -59,7 +59,7 @@ The fix: **let Snowflake do what Snowflake was built for.**
 | # | Article | What You Learn | Code Tag |
 |---|---------|---------------|----------|
 | 1 | [Stop Using Airflow Wrong](articles/01-stop-using-airflow-wrong.md) | Architecture philosophy | `repo-live` |
-| 2 | Incremental CDC Pipeline | Watermarks + triggered tasks | `v0.1` |
+| 2 | [Incremental CDC Pipeline](articles/02-incremental-cdc-pipeline.md) | Watermarks + triggered tasks | `v0.1` |
 | 3 | dbt: Bronze to Gold | Incremental models + QUALIFY dedup | `v0.2` |
 | 4 | Multi-Source TaskGroups | Parallel ingestion from 3 APIs | `v0.3` |
 | 5 | 10 Gotchas | War stories that save you days | `v0.4` |
@@ -117,7 +117,7 @@ This brings up:
 ### 4. Trigger the Pipeline
 
 1. Open http://localhost:8080
-2. Find `single_source_pipeline` DAG
+2. Find `eventhub_single_source_pipeline` DAG
 3. Unpause → Trigger
 4. Watch it extract from Mock API → PUT to Snowflake → observe task completion
 

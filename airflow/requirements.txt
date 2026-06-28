@@ -1,0 +1,4 @@
+snowflake-connector-python[pandas]==3.12.3
+cryptography==43.0.0
+requests==2.32.3
+apache-airflow-providers-snowflake==5.7.0

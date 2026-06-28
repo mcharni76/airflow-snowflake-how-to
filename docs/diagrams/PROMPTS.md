@@ -401,3 +401,249 @@ Style notes:
 - Font: hand-written throughout
 - Keep it scannable — max 3 bullets per box, short phrases only
 ```
+
+---
+
+## Article 2 Diagrams
+
+### art2-00-cover.png (Article 2 Cover — Full Pipeline Overview)
+
+```
+Create a professional infographic in flat design style. Clean vectors, sharp edges, NO hand-drawn aesthetic. White background. Dimensions: 1200x1500 portrait.
+
+Title at top (bold, dark #1F2937): "Building an Incremental CDC Pipeline (Locally)"
+Subtitle (lighter, #6B7280): "API → PUT → Stage → Stream → Triggered Task → Bronze"
+
+PRIMARY VISUAL (center, ~60% of image):
+A numbered step-flow diagram showing the complete pipeline path:
+
+Step cards (rounded rectangles with numbered circles):
+① "Mock API" — icon: server/API symbol — color: green (#10B981)
+② "Extract (paginated)" — icon: download arrow — color: green (#10B981)
+③ "Write JSON file" — icon: file/document — color: gray (#374151)
+④ "PUT to Stage" — icon: upload arrow — color: blue (#2563EB)
+⑤ "Stream detects" — icon: eye/radar — color: teal (#0D9488)
+⑥ "Triggered Task fires" — icon: lightning bolt — color: teal (#0D9488)
+⑦ "MERGE INTO Bronze" — icon: merge/combine arrows — color: teal (#0D9488)
+
+Connectors between steps: dashed lines with small arrows.
+
+SECTION LABELS (pill-shaped badges):
+- Steps 1-3: "AIRFLOW (control plane)" pill in gray
+- Steps 4-7: "SNOWFLAKE (runtime)" pill in teal
+
+SIDE ANNOTATIONS:
+- Near step 1: "Watermark: since=2026-06-28T14:55Z"
+- Near step 4: "~5 seconds of worker time"
+- Near step 7: "Idempotent MERGE (safe to replay)"
+
+BOTTOM STRIP:
+- Three stat boxes in a row:
+  - "5s" / "Active worker time per run"
+  - "15s" / "Sensor poll interval"
+  - "0" / "DataFrames used"
+
+Color palette: Primary Blue (#2563EB), Teal (#0D9488) for Snowflake, Green (#10B981) for extraction, Gray (#374151) for text, Orange (#F97316) for warnings/highlights. White background.
+```
+
+---
+
+### art2-01-docker-stack.png (Local Stack Architecture)
+
+```
+Create a professional infographic in flat design style. Clean vectors, sharp edges. White background. Dimensions: 1200x800 landscape.
+
+Title (top-left, bold): "Local Development Stack"
+
+MAIN LAYOUT:
+A large rounded rectangle labeled "Docker Compose (your laptop)" with a dashed dark gray border.
+
+Inside the Docker rectangle, THREE service boxes in a horizontal row:
+
+Box 1 — "Mock API (EventHub)"
+- Subtitle: ":8099"
+- Small text: "FastAPI + /docs"
+- Color: green fill (#ECFDF5), green border (#10B981)
+- Icon: small API/server symbol
+
+Box 2 — "Airflow"
+- Subtitle: ":8080"
+- Three sub-components listed: "webserver | scheduler | triggerer"
+- Color: amber fill (#FFFBEB), amber border (#F59E0B)
+- Icon: airflow logo / workflow symbol
+
+Box 3 — "PostgreSQL"
+- Subtitle: ":5432"
+- Small text: "metadata only"
+- Color: gray fill (#F3F4F6), gray border (#6B7280)
+- Icon: database cylinder
+
+ARROWS INSIDE DOCKER:
+- Mock API → Airflow: labeled "HTTP response"
+- Airflow → PostgreSQL: labeled "state"
+
+BELOW THE DOCKER BOX (cloud shape):
+- A blue cloud shape (#29B5E8 border) labeled "Snowflake (cloud)"
+- Inside: "Stage → Stream → Task → Bronze"
+- A thick arrow from Airflow box DOWN to the cloud:
+  - Label: "PUT file + SQL commands"
+  - Sub-label: "key-pair auth (no passwords)"
+
+BOTTOM NOTE:
+"Everything runs locally except Snowflake. No S3, no cloud infra, no IAM roles."
+
+Color palette: Green (#10B981) for API, Amber (#F59E0B) for Airflow, Blue (#29B5E8) for Snowflake, Gray (#6B7280) for Postgres. White background.
+```
+
+---
+
+### art2-02-watermark-flow.png (Watermark Timeline)
+
+```
+Create a professional infographic in flat design style. Clean vectors, sharp edges. White background. Dimensions: 1200x600 landscape.
+
+Title (top-left, bold): "Watermark-Based Incremental Extraction"
+
+MAIN VISUAL — A horizontal timeline:
+
+TIME ARROW running left to right, with time labels:
+- "14:50" ... "14:55" ... "15:00" ... "15:05"
+
+THREE LABELED RUNS on the timeline:
+
+Run 1 (at 14:55):
+- Blue dot on timeline
+- Above: card labeled "Run 1"
+- Inside card: 
+  - "Read watermark: 14:50"
+  - "Extract since 14:50"
+  - "Got 18 records"
+  - "Advance to 14:55"
+- Arrow pointing from 14:50 to 14:55 on timeline, labeled "window"
+
+Run 2 (at 15:00):
+- Blue dot on timeline
+- Above: card labeled "Run 2"
+- Inside card:
+  - "Read watermark: 14:55"
+  - "Extract since 14:55"
+  - "Got 22 records"
+  - "Advance to 15:00"
+- Arrow pointing from 14:55 to 15:00 on timeline, labeled "window"
+
+Run 3 (at 15:05):
+- Blue dot on timeline
+- Above: card labeled "Run 3"
+- Inside card:
+  - "Read watermark: 15:00"
+  - "Extract since 15:00"
+  - "Got 0 records → SKIP"
+- No advance arrow (skipped)
+
+KEY INSIGHT BOX (bottom-right):
+Orange border (#F97316), contains:
+"Watermark only advances AFTER Bronze is confirmed loaded.
+If the task fails → watermark stays → next run retries from same point.
+Zero data loss. Zero gaps."
+
+Color palette: Blue (#2563EB) for timeline/runs, Orange (#F97316) for insights, Gray (#374151) for text. White background.
+```
+
+---
+
+### art2-03-put-stage-stream.png (File → Stage → Stream → Task → MERGE)
+
+```
+Create a professional infographic in flat design style. Clean vectors, sharp edges. White background. Dimensions: 1200x800 landscape.
+
+Title (top-left, bold): "From File to Bronze: The Event-Driven Path"
+
+MAIN VISUAL — A left-to-right flow with 5 numbered stages:
+
+Stage 1: "PUT file"
+- Icon: upload arrow into a folder
+- Label below: "Airflow uploads JSON"
+- Color: gray (#374151)
+- Annotation: "~1 second"
+
+→ (dashed arrow)
+
+Stage 2: "@TICKETING_STAGE"
+- Icon: folder with snowflake symbol
+- Label below: "Internal stage (encrypted)"
+- Color: blue (#2563EB)
+- File icon inside showing "tickets.json"
+
+→ (solid arrow labeled "ALTER STAGE REFRESH")
+
+Stage 3: "Directory Stream"
+- Icon: eye/radar watching the stage
+- Label below: "Detects new file metadata"
+- Color: teal (#0D9488)
+- Small annotation: "METADATA$ACTION = 'INSERT'"
+
+→ (lightning bolt arrow labeled "SYSTEM$STREAM_HAS_DATA → TRUE")
+
+Stage 4: "Triggered Task"
+- Icon: lightning bolt / gear
+- Label below: "Fires automatically"
+- Color: teal (#0D9488)
+- Annotation: "No schedule — event-driven"
+
+→ (solid arrow)
+
+Stage 5: "MERGE INTO Bronze"
+- Icon: merge/combine symbol
+- Label below: "Idempotent load"
+- Color: teal (#0D9488)
+- Annotation: "Dedup on ticket_id"
+
+SEPARATION LINE:
+A vertical dashed line between Stage 1 and Stage 2, with labels:
+- Left of line: "AIRFLOW (done in 1s)"
+- Right of line: "SNOWFLAKE (autonomous)"
+
+BOTTOM BOX (blue fill #EFF6FF):
+"After PUT, Airflow's job is done. Snowflake's stream + task handle the rest.
+No polling needed from Airflow to trigger the load — it's event-driven inside Snowflake."
+
+Color palette: Gray (#374151) for Airflow steps, Blue (#2563EB) for stage, Teal (#0D9488) for Snowflake automation. White background.
+```
+
+---
+
+### art2-04-reschedule-sensor.png (Poke vs Reschedule Comparison)
+
+```
+Create a professional infographic in flat design style. Clean vectors, sharp edges. White background. Dimensions: 1200x700 landscape.
+
+Title (top-left, bold): "Sensor Modes: Poke vs Reschedule"
+
+LAYOUT — Two horizontal timelines stacked vertically:
+
+TOP TIMELINE — "mode='poke'" (bad):
+- Header: "❌ Poke Mode" with red (#EF4444) accent
+- Horizontal bar representing worker slot: SOLID RED fill for entire duration
+- Time labels: "0s" ... "15s" ... "30s" ... "45s" ... "60s (done)"
+- Small "check" markers at 0s, 15s, 30s, 45s, 60s on the bar
+- Between checks: bar still RED (worker occupied)
+- Label below bar: "Worker BLOCKED for 60 seconds (even though checks take 200ms each)"
+- Stats: "5 checks × 200ms = 1 second of useful work. 59 seconds wasted."
+
+BOTTOM TIMELINE — "mode='reschedule'" (good):
+- Header: "✅ Reschedule Mode" with green (#10B981) accent
+- Horizontal bar: SHORT green blocks (200ms each) at 0s, 15s, 30s, 45s, 60s
+- Between blocks: WHITE/empty (worker freed)
+- Small "release" icons between blocks showing worker is returned to pool
+- Label below bar: "Worker freed between checks. Available for other DAGs."
+- Stats: "Same 5 checks, same 200ms each. But worker free for 59 seconds."
+
+COMPARISON BOX (bottom center):
+Two-column comparison:
+| | Poke | Reschedule |
+| Worker time held | 60s | ~1s |
+| Other DAGs can run? | No | Yes |
+| 16 workers, 20 sensors | Queue builds | All fit |
+
+Color palette: Red (#EF4444) for poke/bad, Green (#10B981) for reschedule/good, Blue (#2563EB) for highlights, Gray (#374151) for text. White background.
+```
