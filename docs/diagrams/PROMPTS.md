@@ -8,6 +8,61 @@
 
 ## Article 1 Diagrams
 
+### 00-series-cover.png (Medium Cover Image)
+
+```
+Create a wide cover image in hand-drawn sketch style (Excalidraw aesthetic with wobbly lines and hand-written Virgil font). White background. Dimensions: 1400x750 pixels.
+
+CENTER COMPOSITION:
+- A large hand-drawn title in bold sketch font: "Airflow + Snowflake: The Right Way"
+- Below the title, a subtitle in smaller hand-written text: "A 7-Part Series on Building Production Pipelines"
+
+LEFT SIDE (~30%):
+- A small, thin, almost empty box labeled "Airflow" with a simple toggle switch icon inside
+- Hand-written labels floating around it: "orchestrate", "signal", "observe"
+- Overall feel: lightweight, minimal, calm
+
+RIGHT SIDE (~60%):
+- A large, thick-bordered box labeled "Snowflake" in blue (#29B5E8)
+- Inside, a vertical cascade of hand-drawn boxes connected by arrows:
+  - "Stage" → "Stream" → "Task" → "Bronze" → "Silver" → "Gold"
+- Small gear/cog icons spinning next to each box
+- Overall feel: powerful, busy, doing the heavy lifting
+
+CONNECTING ELEMENT (between left and right):
+- A single thin dashed arrow from Airflow to Snowflake
+- Label on arrow: "signals, not data"
+- A small hand-drawn "X" over a thick arrow (representing "no data transfer through Airflow")
+
+BOTTOM STRIP (series overview, like a film strip or timeline):
+- 7 small numbered circles in a horizontal row: ①②③④⑤⑥⑦
+- Below each circle, a 2-word label:
+  1. "Architecture"
+  2. "CDC Pipeline"  
+  3. "dbt Models"
+  4. "Multi-Source"
+  5. "Gotchas"
+  6. "SPCS Deploy"
+  7. "MWAA Migrate"
+- A hand-drawn progress arrow running underneath all 7 circles
+
+CORNER ELEMENTS:
+- Top-right: small hand-drawn Docker whale icon
+- Bottom-left: small hand-drawn Python logo (two snakes)
+- These are subtle, not dominant
+
+Color palette: 
+- Snowflake Blue (#29B5E8) for Snowflake elements
+- Dark Gray (#374151) for Airflow elements and text
+- Green (#10B981) for the flow arrows inside Snowflake
+- Amber (#F59E0B) for the series timeline circles
+- White background throughout
+
+Style: The overall impression should be "a thoughtful technical series about doing things the right way." Professional but approachable. The hand-drawn aesthetic makes it feel human and practical, not corporate. The size contrast between Airflow (small) and Snowflake (large) reinforces the core message.
+```
+
+---
+
 ### 01-control-plane.png (Cover Image)
 
 ```

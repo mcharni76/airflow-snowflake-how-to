@@ -2,7 +2,7 @@
 
 *Your Airflow DAGs shouldn't be doing what you think they should be doing.*
 
-![Control Plane vs Runtime](../docs/diagrams/01-control-plane.png)
+![Series Cover](../docs/diagrams/00-series-cover.png)
 
 **Reading Time:** 8 minutes
 **Difficulty:** Intermediate
@@ -19,35 +19,82 @@
 You're a data engineer. You need to pull data from a vendor API and land it in Snowflake. So you write a DAG that looks something like this:
 
 ```python
-@task
-def extract():
-    response = requests.get("https://api.vendor.com/data")
-    return response.json()
+from airflow.decorators import dag, task
+from snowflake.connector.pandas_tools import write_pandas
+import pandas as pd
+import requests
 
-@task
-def transform(data):
-    df = pd.DataFrame(data)
-    df["amount"] = df["amount"].astype(float)
-    df["created_at"] = pd.to_datetime(df["created_at"])
-    df = df.drop_duplicates(subset=["id"])
-    return df
+@dag(schedule="@hourly", catchup=False)
+def vendor_etl():
 
-@task
-def load(df):
-    write_pandas(conn, df, "TARGET_TABLE")
+    @task
+    def extract():
+        """Pull everything from the vendor API into memory."""
+        response = requests.get(
+            "https://api.vendor.com/data",
+            params={"since": "2024-01-01"}  # no incremental logic
+        )
+        response.raise_for_status()
+        return response.json()  # entire payload sits in XCom
+
+    @task
+    def transform(data):
+        """Parse, cast, deduplicate — all in Python, all in RAM."""
+        df = pd.DataFrame(data)                         # full dataset in memory
+        df["amount"] = df["amount"].astype(float)       # type casting
+        df["created_at"] = pd.to_datetime(df["created_at"])  # date parsing
+        df = df.drop_duplicates(subset=["id"])          # deduplication
+        df["revenue_bucket"] = pd.cut(                  # business logic
+            df["amount"], bins=[0, 50, 200, 1000, float("inf")],
+            labels=["small", "medium", "large", "enterprise"]
+        )
+        return df  # serialized back into XCom (again, full dataset)
+
+    @task
+    def load(df):
+        """Bulk insert into Snowflake using write_pandas."""
+        conn = snowflake.connector.connect(...)
+        write_pandas(conn, df, "TARGET_TABLE")  # full table overwrite each run
+
+    # DAG wiring
+    raw = extract()
+    cleaned = transform(raw)
+    load(cleaned)
+
+vendor_etl()
 ```
 
-Extract. Transform. Load. Classic ETL in Airflow.
+Look familiar? This is the most common pattern I see in production Airflow deployments. Extract. Transform. Load. Classic ETL — textbook, clean, and **fundamentally wrong** when Snowflake is your target.
 
-Here's the problem: **every line in that `transform` function is work that Snowflake does better, faster, and cheaper than your Airflow worker.**
+Let's break down what's actually happening at runtime:
 
-Type casting? Snowflake does it at read time. Deduplication? `QUALIFY ROW_NUMBER()` is a single-pass operation on columnar storage. Date parsing? Built-in. And it does all of this on dedicated compute, not on the same 2-CPU container that's also running your scheduler.
+| Step | What Happens in Memory | Problem |
+|------|----------------------|---------|
+| `extract()` | Entire API response loaded into Python dict → serialized to XCom (Airflow metadata DB) | XCom has a size limit. Large payloads crash the metadata DB or silently truncate. |
+| `transform(data)` | Dict deserialized → pandas DataFrame created → every row processed in Python | Your 2-CPU, 4GB Airflow worker is now doing compute work. For 10K rows? Fine. For 1M? OOM kill. |
+| `df.astype(float)` | Python iterates every value, casting one by one | Snowflake does this at read time on columnar storage — orders of magnitude faster. |
+| `pd.to_datetime()` | Python parses date strings row by row | Snowflake's `TRY_TO_TIMESTAMP` handles thousands of date formats natively. |
+| `drop_duplicates()` | Pandas hashes every row, builds a set, filters | Snowflake's `QUALIFY ROW_NUMBER()` is a single-pass window function on compressed data. |
+| `pd.cut()` | Python bins values with conditionals | A SQL `CASE WHEN` runs on Snowflake's vectorized engine without data movement. |
+| `load(df)` | `write_pandas` converts DataFrame → Parquet → PUT → COPY INTO | The only step that *actually* needs to talk to Snowflake — but by now you've wasted minutes of worker time on transforms. |
+
+**The total cost:** your Airflow worker is occupied for the entire duration — extract, transform, AND load. If the API is slow (30 seconds), the transform is heavy (2 minutes), and the load takes another minute, that's **3.5 minutes of a worker slot blocked** per DAG run.
+
+Now multiply: 10 sources × hourly × 24 hours = **840 blocked worker-minutes per day.** And you're wondering why DAGs are queuing.
+
+Here's the uncomfortable truth: **every line in that `transform` function is work that Snowflake does better, faster, and cheaper than your Airflow worker.**
+
+Type casting? Snowflake does it at read time on columnar storage — no Python iteration required. Deduplication? `QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY _loaded_at DESC) = 1` is a single-pass window function that handles billions of rows. Date parsing? `TRY_TO_TIMESTAMP_NTZ` with `AUTO` detection handles any format. Binning? A SQL `CASE WHEN` expression runs on Snowflake's vectorized engine without moving a single byte out of the warehouse.
+
+And all of this happens on **dedicated, elastic compute** — not on the same container that's running your scheduler, your webserver, and 15 other DAGs.
 
 ![The Anti-Pattern](../docs/diagrams/02-anti-pattern.png)
 
 ---
 
 ## The Right Mental Model: Control Plane vs Runtime
+
+![Control Plane vs Runtime](../docs/diagrams/01-control-plane.png)
 
 The fix isn't complicated. It's a mindset shift.
 
