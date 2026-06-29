@@ -647,3 +647,229 @@ Two-column comparison:
 
 Color palette: Red (#EF4444) for poke/bad, Green (#10B981) for reschedule/good, Blue (#2563EB) for highlights, Gray (#374151) for text. White background.
 ```
+
+---
+
+## Article 3 Diagrams
+
+### art3-00-cover.png (Article 3 Cover — Medallion Architecture)
+
+```
+Create a professional infographic in flat design style. Clean vectors, sharp edges, NO hand-drawn aesthetic. White background. Dimensions: 1200x1500 portrait.
+
+Title at top (bold, dark #1F2937): "dbt on Snowflake: From Bronze to Gold"
+Subtitle (lighter, #6B7280): "3 SQL files. Zero stored procedures. Full medallion architecture."
+
+PRIMARY VISUAL (center, ~60% of image):
+A vertical three-layer cascade showing the medallion architecture transformation:
+
+LAYER 1 — BRONZE (top):
+- Large rounded rectangle with copper/amber border (#B45309)
+- Inside: a VARIANT blob visualization — JSON-like curly braces with nested keys shown as abstract shapes
+- Label: "BRONZE — RAW_TICKETS"
+- Annotation: "VARIANT blob. Untyped. Unqueried."
+- Icon: raw document/JSON file
+
+↓ (thick arrow labeled "dbt run — fact_tickets.sql")
+↓ Sub-label: "flatten + type + dedup"
+
+LAYER 2 — SILVER (middle):
+- Large rounded rectangle with silver/gray border (#6B7280)
+- Inside: a clean table grid with typed columns shown:
+  - "ticket_id STRING"
+  - "price NUMBER(10,2)"
+  - "purchase_timestamp TIMESTAMP_NTZ"
+- Label: "SILVER — FACT_TICKETS"
+- Annotation: "Typed. Deduplicated. Queryable."
+- Icon: organized table/grid
+
+↓ (thick arrow labeled "dbt run — dim_events.sql + fact_revenue.sql")
+↓ Sub-label: "aggregate + dimension"
+
+LAYER 3 — GOLD (bottom):
+- Large rounded rectangle with gold border (#D97706)
+- Inside: a star schema mini-diagram:
+  - Center fact table: "fact_revenue" (with metrics: total_tickets, total_revenue, avg_price)
+  - Connected dimension: "dim_events" (event_id, event_name, venue)
+- Label: "GOLD — Star Schema"
+- Annotation: "Business-ready. Dashboard-optimized."
+- Icon: star/chart symbol
+
+SIDE ANNOTATIONS (right side, vertical):
+- Bronze level: "is_incremental() → scan only new rows"
+- Silver level: "QUALIFY ROW_NUMBER() → keep latest"
+- Gold level: "WHERE status NOT IN ('cancelled','refunded')"
+
+BOTTOM STRIP:
+Three stat boxes in a row:
+- "3" / "SQL files total"
+- "847" / "rows processed (incremental)"
+- "4.2s" / "total dbt build time"
+
+Color palette: Amber/copper (#B45309) for Bronze, Silver/gray (#6B7280) for Silver, Gold (#D97706) for Gold, Blue (#2563EB) for arrows/dbt, Gray (#374151) for text. White background.
+```
+
+---
+
+### art3-01-incremental-logic.png (First Run vs Subsequent Runs)
+
+```
+Create a professional infographic in flat design style. Clean vectors, sharp edges. White background. Dimensions: 1200x600 landscape.
+
+Title (top-left, bold): "Incremental Materialization: First Run vs Run N"
+
+LAYOUT — Two panels side by side:
+
+LEFT PANEL — "FIRST RUN (full table scan)":
+- Header with blue accent (#2563EB): "Run 1 — is_incremental() = FALSE"
+- Visual: A large table icon with ALL rows highlighted in blue
+- Arrow pointing to: "CREATE TABLE AS SELECT"
+- Stats below:
+  - "Scans: ALL 10,000 rows"
+  - "Result: Full table created"
+  - "Time: ~3 seconds"
+- Key insight: "{{ this }} doesn't exist yet — full scan is the only option"
+
+RIGHT PANEL — "SUBSEQUENT RUN (incremental)":
+- Header with green accent (#10B981): "Run N — is_incremental() = TRUE"
+- Visual: Same large table icon, but only TOP 50 rows highlighted in green, rest grayed out
+- The highlighted section labeled "LOADED_AT > MAX(LOADED_AT)"
+- Arrow pointing to: "MERGE INTO existing table"
+- Stats below:
+  - "Scans: 50 new rows only"
+  - "Result: MERGE (insert/update)"
+  - "Time: ~0.3 seconds"
+- Key insight: "Only touches rows loaded AFTER the last processed batch"
+
+BOTTOM COMPARISON BAR:
+A horizontal bar split into two sections:
+- Left section (blue, 100% width): "Full scan: reads 10,000 rows"
+- Right section (green, tiny sliver): "Incremental: reads 50 rows → 99.5% reduction"
+
+ANNOTATION (bottom-right):
+"At Snowflake scale, this is the difference between $0.50 and $0.005 per run."
+
+Color palette: Blue (#2563EB) for first run, Green (#10B981) for incremental, Red (#EF4444) for cost highlight, Gray (#374151) for text. White background.
+```
+
+---
+
+### art3-02-qualify-dedup.png (QUALIFY Deduplication Visual)
+
+```
+Create a professional infographic in flat design style. Clean vectors, sharp edges. White background. Dimensions: 1200x600 landscape.
+
+Title (top-left, bold): "QUALIFY: Deduplication in One Pass"
+
+LAYOUT — A left-to-right transformation flow:
+
+LEFT SECTION — "INPUT (3 duplicate rows)":
+- A table with 3 rows, same ticket_id but different data:
+  | ticket_id | price | LOADED_AT |
+  | EVH-001   | 425.50 | 14:00    |
+  | EVH-001   | 425.50 | 14:55    |  ← status update
+  | EVH-001   | 400.00 | 15:10    |  ← partial refund
+- All 3 rows highlighted with orange border (#F97316) indicating duplicates
+- Label below: "Same ticket_id, 3 versions across batches"
+
+CENTER SECTION — "QUALIFY LOGIC":
+- A funnel/filter icon
+- Inside/beside the funnel, the SQL:
+  "ROW_NUMBER() OVER (
+    PARTITION BY ticket_id
+    ORDER BY LOADED_AT DESC
+  ) = 1"
+- Visual annotation showing:
+  - Row 1 gets ROW_NUMBER = 3 (oldest) → ❌ filtered
+  - Row 2 gets ROW_NUMBER = 2 (middle) → ❌ filtered
+  - Row 3 gets ROW_NUMBER = 1 (latest) → ✅ kept
+- Arrow from each row showing the assigned number
+
+RIGHT SECTION — "OUTPUT (1 row)":
+- A clean table with exactly 1 row:
+  | ticket_id | price | LOADED_AT |
+  | EVH-001   | 400.00 | 15:10    |
+- Green border (#10B981) indicating the winner
+- Label below: "Latest version kept. Business-correct."
+
+BOTTOM COMPARISON:
+Two small boxes:
+- LEFT box (red border): "DISTINCT: Would keep ALL 3 (different price = different row)"
+- RIGHT box (green border): "QUALIFY: Keeps latest by LOADED_AT. One source of truth."
+
+Color palette: Orange (#F97316) for duplicates/input, Green (#10B981) for output/correct, Red (#EF4444) for wrong approach, Blue (#2563EB) for the QUALIFY logic, Gray (#374151) for text. White background.
+```
+
+---
+
+### art3-03-medallion-flow.png (Full Pipeline Flow)
+
+```
+Create a professional infographic in flat design style. Clean vectors, sharp edges. White background. Dimensions: 1200x800 landscape.
+
+Title (top-left, bold): "The Complete Flow: VARIANT → Typed → Aggregated"
+
+LAYOUT — A horizontal flow with 4 major stages, each with transformation details:
+
+STAGE 1 — "RAW (Bronze)":
+- Icon: JSON/document blob
+- Visual: Abstract JSON representation with curly braces, keys, nested objects
+- Label: "EVENTS_DEV.BRONZE.RAW_TICKETS"
+- Color: Amber/copper (#B45309) fill
+- Properties listed below:
+  - "VARIANT column"
+  - "No schema enforcement"
+  - "Immutable — never modified"
+
+→ (thick arrow labeled "FLATTEN + CAST")
+→ Sub-items on arrow:
+  - "TICKET_DATA:field::TYPE"
+  - "NULL filter"
+
+STAGE 2 — "TYPED (Silver input)":
+- Icon: Table grid with column headers
+- Visual: Clean column layout showing types
+- Label: "After flattening"
+- Color: Gray (#6B7280) fill
+- Properties:
+  - "STRING, NUMBER, TIMESTAMP"
+  - "But: may have duplicates"
+
+→ (thick arrow labeled "QUALIFY DEDUP")
+→ Sub-items:
+  - "ROW_NUMBER() OVER (...)"
+  - "Keep latest per ticket_id"
+
+STAGE 3 — "CLEAN (Silver output)":
+- Icon: Clean table with checkmark
+- Visual: Table grid with green checkmarks by each row
+- Label: "EVENTS_DEV.SILVER.FACT_TICKETS"
+- Color: Silver/blue-gray (#64748B) fill
+- Properties:
+  - "Typed + deduplicated"
+  - "One row per ticket_id"
+  - "Incremental (only new rows)"
+
+→ (thick arrow labeled "AGGREGATE + EXCLUDE")
+→ Sub-items:
+  - "GROUP BY date, event, category"
+  - "WHERE status NOT IN ('cancelled','refunded')"
+
+STAGE 4 — "BUSINESS (Gold)":
+- Icon: Star schema / chart
+- Visual: Small star schema showing fact_revenue connected to dim_events
+- Label: "EVENTS_DEV.GOLD.*"
+- Color: Gold (#D97706) fill
+- Properties:
+  - "Pre-aggregated metrics"
+  - "Dashboard-ready"
+  - "Full refresh (small tables)"
+
+BOTTOM TIMELINE:
+A horizontal bar showing what happens at each stage:
+- Bronze: "Land raw → never touch again"
+- Silver: "Type + dedup → source of truth"
+- Gold: "Aggregate → fast queries"
+
+Color palette: Amber (#B45309) for Bronze, Gray (#6B7280) for intermediate, Blue-gray (#64748B) for Silver, Gold (#D97706) for Gold, Blue (#2563EB) for arrows. White background.
+```

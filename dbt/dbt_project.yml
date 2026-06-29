@@ -1,0 +1,25 @@
+name: 'events_pipeline'
+version: '1.0.0'
+config-version: 2
+
+profile: 'events_pipeline'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  events_pipeline:
+    silver:
+      +schema: SILVER
+      +tags: ["tickets"]
+    gold:
+      +schema: GOLD
+      +tags: ["gold"]

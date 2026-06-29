@@ -41,6 +41,11 @@ airflow/plugins/
 # Snowflake
 *.snowflake/
 
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
 # pytest
 .pytest_cache/
 htmlcov/

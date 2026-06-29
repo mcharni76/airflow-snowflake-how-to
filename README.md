@@ -60,7 +60,7 @@ The fix: **let Snowflake do what Snowflake was built for.**
 |---|---------|---------------|----------|
 | 1 | [Stop Using Airflow Wrong](articles/01-stop-using-airflow-wrong.md) | Architecture philosophy | `repo-live` |
 | 2 | [Incremental CDC Pipeline](articles/02-incremental-cdc-pipeline.md) | Watermarks + triggered tasks | `v0.1` |
-| 3 | dbt: Bronze to Gold | Incremental models + QUALIFY dedup | `v0.2` |
+| 3 | [dbt: Bronze to Gold](articles/03-dbt-bronze-to-gold.md) | Incremental models + QUALIFY dedup | `v0.2` |
 | 4 | Multi-Source TaskGroups | Parallel ingestion from 3 APIs | `v0.3` |
 | 5 | 10 Gotchas | War stories that save you days | `v0.4` |
 | B1 | Airflow on SPCS | Enterprise self-hosted in Snowflake | `v1.0-spcs` |

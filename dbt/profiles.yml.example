@@ -1,0 +1,26 @@
+# ============================================================
+# LOCAL DEVELOPMENT ONLY (not used for native Snowflake dbt)
+# ============================================================
+# Copy this to ~/.dbt/profiles.yml if you want to run dbt locally
+# against Snowflake for development/testing purposes.
+#
+# For production: the project is deployed natively to Snowflake
+# using `snow dbt deploy` and executed via `EXECUTE DBT PROJECT`.
+# In that mode, profiles.yml lives inside the project directory
+# WITHOUT authentication fields (Snowflake session handles auth).
+# ============================================================
+
+events_pipeline:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "<your_account>"
+      user: "<your_user>"
+      role: EVENTS_DEV_ROLE
+      warehouse: COMPUTE_WH
+      database: EVENTS_DEV
+      schema: PUBLIC
+      authenticator: snowflake_jwt
+      private_key_path: "~/.ssh/snowflake_rsa_key.p8"
+      threads: 4

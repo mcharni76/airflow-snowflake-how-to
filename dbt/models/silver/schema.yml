@@ -1,0 +1,40 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: EVENTS_DEV
+    schema: BRONZE
+    tables:
+      - name: raw_tickets
+        description: Raw ticket records from EventHub API, stored as VARIANT.
+
+models:
+  - name: fact_tickets
+    description: >
+      Flattened and typed ticket records from EventHub Bronze layer.
+      Incremental on LOADED_AT with QUALIFY dedup on ticket_id.
+    config:
+      tags: ["tickets"]
+      materialized: incremental
+      schema: SILVER
+    columns:
+      - name: ticket_id
+        description: Unique ticket identifier (EVH-YYYYMMDD-XXXXXX format).
+        tests:
+          - not_null
+          - unique
+      - name: event_id
+        tests:
+          - not_null
+      - name: category
+        tests:
+          - accepted_values:
+              values: ["VIP", "Premium", "Standard", "General Admission"]
+      - name: ticket_status
+        tests:
+          - accepted_values:
+              values: ["confirmed", "pending", "cancelled", "refunded"]
+      - name: currency
+        tests:
+          - accepted_values:
+              values: ["USD"]

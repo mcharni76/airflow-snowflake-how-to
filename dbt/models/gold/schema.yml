@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: dim_events
+    description: >
+      Distinct event dimension from Silver layer.
+      One row per unique event_id with venue metadata.
+    config:
+      tags: ["gold"]
+      materialized: table
+      schema: GOLD
+    columns:
+      - name: event_key
+        description: Surrogate key (row number).
+        tests:
+          - not_null
+          - unique
+      - name: event_id
+        tests:
+          - not_null
+          - unique
+      - name: event_name
+        tests:
+          - not_null
+
+  - name: fact_revenue
+    description: >
+      Aggregated daily revenue by event and category.
+      Excludes cancelled and refunded tickets.
+    config:
+      tags: ["gold"]
+      materialized: table
+      schema: GOLD
+    columns:
+      - name: revenue_date
+        tests:
+          - not_null
+      - name: event_id
+        tests:
+          - not_null
+      - name: total_tickets
+        tests:
+          - not_null
+      - name: total_revenue
+        tests:
+          - not_null

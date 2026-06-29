@@ -1,0 +1,12 @@
+events_pipeline:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "SFSENORTHAMERICA-MCHARNI_AZURE_EU"
+      user: "MCHARNI"
+      role: ACCOUNTADMIN
+      warehouse: COMPUTE_WH
+      database: EVENTS_DEV
+      schema: PUBLIC
+      threads: 4
